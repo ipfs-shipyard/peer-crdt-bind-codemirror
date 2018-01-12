@@ -1,0 +1,25 @@
+{
+  "name": "peer-crdt-bind-coremirror-example",
+  "version": "0.0.1",
+  "description": "peer-crdt-bind-coremirror example",
+  "main": "index.js",
+  "scripts": {
+    "build": "browserify src/index.js -d -o public/index.bundle.js",
+    "build:watch": "watchify src/index.js -d -o public/index.bundle.js -v",
+    "start": "npm run build && npm run start:server",
+    "start:server": "serve public"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "browserify": "^15.0.0",
+    "bs58": "^4.0.1",
+    "codemirror": "^5.33.0",
+    "ipfs": "^0.27.6",
+    "libp2p-crypto": "^0.11.0",
+    "peer-crdt": "^0.6.1",
+    "peer-crdt-ipfs": "^0.4.0",
+    "serve": "^6.4.4",
+    "watchify": "^3.9.0"
+  }
+}

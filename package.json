@@ -1,0 +1,31 @@
+{
+  "name": "peer-crdt-bind-codemirror",
+  "version": "0.0.1",
+  "description": "Binds a Codemirror editor and peer-crdt",
+  "main": "src/index.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ipfs-shipyard/peer-crdt-bind-codemirror.git"
+  },
+  "keywords": [
+    "p2p",
+    "CRDT",
+    "codemirror",
+    "binding"
+  ],
+  "author": "Pedro Teixeira <i@pgte.me>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ipfs-shipyard/peer-crdt-bind-codemirror/issues"
+  },
+  "homepage": "https://github.com/ipfs-shipyard/peer-crdt-bind-codemirror#readme",
+  "dependencies": {
+    "p-limit": "^1.2.0"
+  }
+}
