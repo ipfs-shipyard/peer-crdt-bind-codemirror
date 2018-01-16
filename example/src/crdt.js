@@ -15,7 +15,7 @@ const KEYS = {
 }
 
 module.exports = async (type, id) => {
-  const { encrypt, decrypt} = await Crypto(KEYS.read, KEYS.write)
+  const { encrypt, decrypt } = await Crypto(KEYS.read, KEYS.write)
   const ipfs = new IPFS({
     EXPERIMENTAL: {
       pubsub: true

@@ -11,7 +11,7 @@ module.exports = async (privateKey, publicKey) => {
     return new Promise(async (resolve, reject) => {
       const buf = Buffer.from(JSON.stringify(value))
       keys.write.sign(buf, (err, signature) => {
-        if (err) {
+        if (err) {
           return reject(err)
         }
         const message = [buf.toString('hex'), Buffer.from(signature).toString('hex')]
