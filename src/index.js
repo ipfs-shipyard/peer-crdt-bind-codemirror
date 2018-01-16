@@ -1,15 +1,28 @@
 'use strict'
 
 const pLimit = require('p-limit')
+const debounce = require('lodash.debounce')
+
+const defaultOptions = {
+  debounceMS: 2000
+}
 
 module.exports = bindCodeMirror
 
-function bindCodeMirror (crdt, cm) {
+function bindCodeMirror (crdt, cm, opts) {
+  const options = Object.assign({}, defaultOptions, opts)
   const selfChanges = new Set()
+  const changes = {
+    adds: [],
+    removes: []
+  }
+  let saving = false
+  let hasMoreChanges = false
 
   const limit = pLimit(1)
+  const saveChanges = debounce(_saveChanges, options.debounceMS)
 
-  cm.setValue(value())
+  cm.setValue(crdt.value())
   cm.on('beforeChange', codeMirrorBeforeChange)
   crdt.on('change', crdtChanged)
 
@@ -20,13 +33,78 @@ function bindCodeMirror (crdt, cm) {
       return
     }
     const pos = cm.indexFromPos(change.from)
-    console.log('POS:', pos)
     const to = cm.indexFromPos(change.to)
-    for(let i = pos; i < to; i++) {
-      limit(() => crdt.removeAt(i).then(pushToSelfChanges))
+    for (let i = to; i > pos; i--) {
+      const remove = findOrCreateRemoveStartingAtPos(i)
+      remove.start--
+      remove.length++
     }
     const text = change.text.join('\n')
-    limit(() => crdt.insertAt(pos, text).then(pushToSelfChanges))
+    const add = findOrCreateAddFinishingAtPos(pos)
+    add.chars.push(text)
+    add.stop++
+    saveChanges()
+  }
+
+  function findOrCreateAddFinishingAtPos (pos) {
+    const adds = changes.adds.filter((add) => add.stop === pos)
+    let add
+    if (adds.length) {
+      add = adds[0]
+    } else {
+      add = {
+        start: pos,
+        stop: pos,
+        chars: []
+      }
+      changes.adds.push(add)
+    }
+
+    return add
+  }
+
+  function findOrCreateRemoveStartingAtPos (pos) {
+    const removes = changes.removes.filter((remove) => remove.start === pos)
+    let remove
+    if (removes.length) {
+      remove = removes[0]
+    } else {
+      remove = {
+        start: pos,
+        length: 0
+      }
+      changes.removes.push(remove)
+    }
+
+    return remove
+  }
+
+  async function _saveChanges () {
+    if (saving) {
+      hasMoreChanges = true
+      return
+    }
+    saving = true
+
+    // removes
+    const removes = changes.removes
+    changes.removes = []
+    let actions = removes.map(
+      (remove) => limit(() => crdt.removeAt(remove.start, remove.length).then(pushToSelfChanges)))
+
+    // adds
+    const adds = changes.adds.filter((add) => add.chars.length)
+    changes.adds = []
+    actions = actions.concat(
+      adds.map(
+        (add) => limit(() => crdt.insertAt(add.start, add.chars.join('')).then(pushToSelfChanges))))
+
+    const results = await Promise.all(actions)
+    saving = false
+    if (hasMoreChanges) {
+      hasMoreChanges = false
+      _saveChanges()
+    }
   }
 
   function crdtChanged (event) {
@@ -35,7 +113,6 @@ function bindCodeMirror (crdt, cm) {
 
   function _crdtChanged (event) {
     if (wasChangeFromSelf(event.id)) {
-      console.log('was change from self')
       return
     }
     const fromIndex = cm.posFromIndex(event.pos)
@@ -49,17 +126,13 @@ function bindCodeMirror (crdt, cm) {
     cm.replaceRange(event.atom || '', fromIndex, toIndex, 'crdt')
   }
 
-  function value() {
-    return crdt.value().join('')
-  }
-
   function unbind () {
     cm.removeListener('beforeChange', codeMirrorBeforeChange)
     crdt.removeListener('change', crdtChanged)
   }
 
-  function pushToSelfChanges(ids) {
-    for(let id of ids) {
+  function pushToSelfChanges (ids) {
+    for (let id of ids) {
       selfChanges.add(id)
     }
   }
