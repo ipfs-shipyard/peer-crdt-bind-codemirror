@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/ipfs-shipyard/peer-crdt-bind-codemirror#readme",
   "dependencies": {
+    "lodash.debounce": "^4.0.8",
     "p-limit": "^1.2.0"
   }
 }
