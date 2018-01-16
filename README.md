@@ -8,7 +8,7 @@ Binds a [Codemirror](http://codemirror.net) editor and [peer-crdt](https://githu
 $ npm install peer-crdt-bind-codemirror
 ```
 
-## API
+## Example
 
 ```js
 const Codemirror = require('codemirror')
@@ -23,6 +23,19 @@ const unbind = bind(crdt, editor)
 
 unbind()
 ```
+
+## API
+
+# `bind (crdt, editor [, options])`
+
+Returns an unbind function.
+
+Arguments:
+
+* `crdt`: must be a CRDT of type `treedoc`
+* `editor`: an instance of Codemirror
+* `options`: optional object with the following shape:
+  * `debounceMS`: how long (in miliseconds) after the last edit should the CRDT be updated. Default is `2000`.
 
 See [example](example/src/index.js).
 
