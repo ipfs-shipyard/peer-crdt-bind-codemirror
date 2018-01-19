@@ -2,6 +2,7 @@
 
 const pLimit = require('p-limit')
 const debounce = require('lodash.debounce')
+const Diff = require('fast-diff')
 
 const defaultOptions = {
   debounceMS: 2000
@@ -12,12 +13,14 @@ module.exports = bindCodeMirror
 function bindCodeMirror (crdt, cm, opts) {
   const options = Object.assign({}, defaultOptions, opts)
   const selfChanges = new Set()
+  let hasPendingChanges = false
   const changes = {
     adds: [],
     removes: []
   }
   let saving = false
   let hasMoreChanges = false
+  let crdtChanges = []
 
   const limit = pLimit(1)
   const saveChanges = debounce(_saveChanges, options.debounceMS)
@@ -29,20 +32,18 @@ function bindCodeMirror (crdt, cm, opts) {
   return unbind
 
   function codeMirrorBeforeChange (cm, change) {
-    if (change.origin === 'crdt') {
+    if (change.origin === 'crdt' || change.origin === 'setValue') {
       return
     }
+    hasPendingChanges = true
     let pos = cm.indexFromPos(change.from)
     const to = cm.indexFromPos(change.to)
     const length = to - pos
     for (let i = to; i > pos; i--) {
-      console.log('removing pos', i)
       const remove = findOrCreateRemoveStartingAtPos(i)
       remove.start--
       remove.length++
     }
-    // pos -= length
-    console.log('now adding at pos', pos)
     const text = change.text.join('\n')
     const add = findOrCreateAddFinishingAtPos(pos)
     add.chars.push(text)
@@ -95,13 +96,11 @@ function bindCodeMirror (crdt, cm, opts) {
     changes.removes = []
     let actions = removes.map(
       (remove) => limit(() => {
-        console.log('removing: ', remove)
         return crdt.removeAt(remove.start, remove.length).then(pushToSelfChanges)
       }))
 
     // adds
     const adds = changes.adds.filter((add) => add.chars.length)
-    console.log('adds', adds)
     changes.adds = []
     actions = actions.concat(
       adds.map(
@@ -112,6 +111,9 @@ function bindCodeMirror (crdt, cm, opts) {
     if (hasMoreChanges) {
       hasMoreChanges = false
       _saveChanges()
+    } else {
+      hasPendingChanges = false
+      flushCrdtChanges()
     }
   }
 
@@ -123,17 +125,35 @@ function bindCodeMirror (crdt, cm, opts) {
     if (wasChangeFromSelf(event.id)) {
       return
     }
-    const fromIndex = cm.posFromIndex(event.pos)
-    let toIndex
-    if (event.type === 'insert') {
-      toIndex = fromIndex
-    } else if (event.type === 'delete') {
-      toIndex = cm.posFromIndex(event.pos + event.deleted.length)
+
+    crdtChanges.push(event)
+
+    if (!hasPendingChanges) {
+      flushCrdtChanges()
     }
+  }
 
-    console.log('should be', crdt.value())
+  function flushCrdtChanges () {
+    const changes = crdtChanges
+    crdtChanges = []
 
-    cm.replaceRange(event.atom || '', fromIndex, toIndex, 'crdt')
+    changes.forEach((event) => {
+      const fromIndex = cm.posFromIndex(event.pos)
+      let toIndex
+      if (event.type === 'insert') {
+        toIndex = fromIndex
+      } else if (event.type === 'delete') {
+        toIndex = cm.posFromIndex(event.pos + event.deleted.length)
+      }
+
+      cm.replaceRange(event.atom || '', fromIndex, toIndex, 'crdt')
+    })
+
+    const content = crdt.value()
+    const editorContent = cm.getValue()
+    if (content !== editorContent) {
+      converge(content, editorContent)
+    }
   }
 
   function unbind () {
@@ -153,5 +173,23 @@ function bindCodeMirror (crdt, cm, opts) {
       return true
     }
     return false
+  }
+
+  function converge (content, editorContent) {
+    const diff = Diff(editorContent, content)
+    let index = 0
+    diff.forEach((change) => {
+      const op = change[0]
+      const str = change[1]
+      if (op === Diff.INSERT) {
+        const fromIndex = cm.posFromIndex(index)
+        cm.replaceRange(str, fromIndex, fromIndex, 'crdt')
+      } else if (op === Diff.DELETE) {
+        const fromIndex = cm.posFromIndex(index)
+        const toIndex = cm.posFromIndex(index + str.length)
+        cm.replaceRange(str, fromIndex, toIndex, 'crdt')
+      }
+      index += str.length
+    })
   }
 }
