@@ -1,6 +1,6 @@
 {
   "name": "peer-crdt-bind-codemirror",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Binds a Codemirror editor and peer-crdt",
   "main": "src/index.js",
   "directories": {
