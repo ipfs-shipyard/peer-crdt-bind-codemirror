@@ -32,13 +32,17 @@ function bindCodeMirror (crdt, cm, opts) {
     if (change.origin === 'crdt') {
       return
     }
-    const pos = cm.indexFromPos(change.from)
+    let pos = cm.indexFromPos(change.from)
     const to = cm.indexFromPos(change.to)
+    const length = to - pos
     for (let i = to; i > pos; i--) {
+      console.log('removing pos', i)
       const remove = findOrCreateRemoveStartingAtPos(i)
       remove.start--
       remove.length++
     }
+    // pos -= length
+    console.log('now adding at pos', pos)
     const text = change.text.join('\n')
     const add = findOrCreateAddFinishingAtPos(pos)
     add.chars.push(text)
@@ -90,10 +94,14 @@ function bindCodeMirror (crdt, cm, opts) {
     const removes = changes.removes
     changes.removes = []
     let actions = removes.map(
-      (remove) => limit(() => crdt.removeAt(remove.start, remove.length).then(pushToSelfChanges)))
+      (remove) => limit(() => {
+        console.log('removing: ', remove)
+        return crdt.removeAt(remove.start, remove.length).then(pushToSelfChanges)
+      }))
 
     // adds
     const adds = changes.adds.filter((add) => add.chars.length)
+    console.log('adds', adds)
     changes.adds = []
     actions = actions.concat(
       adds.map(
@@ -122,6 +130,8 @@ function bindCodeMirror (crdt, cm, opts) {
     } else if (event.type === 'delete') {
       toIndex = cm.posFromIndex(event.pos + event.deleted.length)
     }
+
+    console.log('should be', crdt.value())
 
     cm.replaceRange(event.atom || '', fromIndex, toIndex, 'crdt')
   }
