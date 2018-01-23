@@ -17,13 +17,16 @@ const crdt = ...
 const cursorCrdt = ...
 const editor = Codemirror.fromTextArea(document.getElementById('codemirror'))
 
-// bind editor to a CRDT
-const unbind = bind(crdt, editor)
+// bind editor to an array CRDT
+const unbind = bind.editor(crdt, editor)
+
+// bind cursors to a register CRDT
 const unbindCursors = bind.cursors(cursorCrdt, editor)
 
 // some time later ...
 
 unbind()
+unbindCursors()
 ```
 
 ## API

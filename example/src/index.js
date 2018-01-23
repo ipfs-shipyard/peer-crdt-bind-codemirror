@@ -17,7 +17,7 @@ Promise.all(
       lineNumbers: true
     }
     const codemirror = Codemirror.fromTextArea(document.getElementById('codemirror'), cmOptions)
-    bind(text, codemirror)
+    bind.editor(text, codemirror)
     bind.cursors(cursors, codemirror)
   }
 )
